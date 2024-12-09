@@ -1,5 +1,7 @@
 package com.email.spamfilter.ouath.example.withlogin.global.jwt.filter;
 
+import com.email.spamfilter.global.exception.BusinessException;
+import com.email.spamfilter.global.exception.ExceptionType;
 import com.email.spamfilter.ouath.example.withlogin.domain.user.User;
 import com.email.spamfilter.ouath.example.withlogin.domain.user.repository.UserRepository;
 import com.email.spamfilter.ouath.example.withlogin.global.jwt.service.JwtService;
@@ -114,12 +116,23 @@ public class JwtAuthenticationProcessingFilter extends OncePerRequestFilter {
     public void checkAccessTokenAndAuthentication(HttpServletRequest request, HttpServletResponse response,
                                                   FilterChain filterChain) throws ServletException, IOException {
         log.info("checkAccessTokenAndAuthentication() 호출");
+        // OAuth2 로그인 관련 URL이거나, 로그인 관련 요청인 경우에는 토큰 검증을 건너뜁니다.
+        if (request.getRequestURI().startsWith("/oauth2")|| request.getRequestURI().contains("authorization")) {
+            log.info("OAuth2 관련 요청이므로 필터를 건너뛰고 다음 필터로 진행합니다.");
+            filterChain.doFilter(request, response);
+            return;
+        }
+
+        // AccessToken을 추출하여 검증
         jwtService.extractAccessToken(request)
                 .filter(jwtService::isTokenValid)
                 .ifPresent(accessToken -> jwtService.extractEmail(accessToken)
                         .ifPresent(email -> userRepository.findByEmail(email)
                                 .ifPresent(this::saveAuthentication)));
 
+        log.info("checkAccessTokenAndAuthentication() 실행 완료, 다음 필터로 진입 시도");
+
+        // 다음 필터로 요청을 전달
         filterChain.doFilter(request, response);
     }
 
@@ -139,6 +152,8 @@ public class JwtAuthenticationProcessingFilter extends OncePerRequestFilter {
      * setAuthentication()을 이용하여 위에서 만든 Authentication 객체에 대한 인증 허가 처리
      */
     public void saveAuthentication(User myUser) {
+        log.info("saveAuthentication() 호출됨");
+
         String password = myUser.getPassword();
         if (password == null) { // 소셜 로그인 유저의 비밀번호 임의로 설정 하여 소셜 로그인 유저도 인증 되도록 설정
             password = PasswordUtil.generateRandomPassword();
@@ -150,10 +165,14 @@ public class JwtAuthenticationProcessingFilter extends OncePerRequestFilter {
                 .roles(myUser.getRole().name())
                 .build();
 
+        log.info("userDetailsUser 객체 생성: {}",userDetailsUser.toString());
+
         Authentication authentication =
                 new UsernamePasswordAuthenticationToken(userDetailsUser, null,
                 authoritiesMapper.mapAuthorities(userDetailsUser.getAuthorities()));
+        log.info("authentication 객체 생성: {}",authentication.toString());
 
         SecurityContextHolder.getContext().setAuthentication(authentication);
+        log.info("authentication 객체 securityContextHodler에 저장됨");
     }
 }

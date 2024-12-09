@@ -11,6 +11,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 @Builder
 @Table(name = "USERS")
 @AllArgsConstructor
+@ToString
 public class User {
 
     @Id

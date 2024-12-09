@@ -22,6 +22,11 @@ public enum ExceptionType {
     DUPLICATE_VALUE_ERROR(NOT_ACCEPTABLE , "C005","값이 중복됨"),
 
 
+    // security
+    ACCESSTOKEN_EXTRACT_FAIL_ERROR(NOT_ACCEPTABLE , "s001","access token 추출 실패"),
+    EMAIL_EXTRACT_FAIL_ERROR(NOT_ACCEPTABLE , "s002","email 추출 실패"),
+
+
     // user
     USER_NOT_FOUND(NOT_FOUND, "U001", "존재하지 않는 사용자"),
     DUPLICATED_PROFILE_ID(CONFLICT, "U002", "중복 프로필 아이디"),

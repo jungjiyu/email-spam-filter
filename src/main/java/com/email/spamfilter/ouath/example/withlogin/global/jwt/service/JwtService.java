@@ -13,6 +13,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Date;
+import java.util.Enumeration;
 import java.util.Optional;
 
 @Service
@@ -94,7 +95,8 @@ public class JwtService {
 
         setAccessTokenHeader(response, accessToken);
         setRefreshTokenHeader(response, refreshToken);
-        log.info("Access Token, Refresh Token 헤더 설정 완료");
+        log.info("Access Token, Refresh Token 헤더 설정 완료 : {}",response.toString());
+
     }
 
     /**
@@ -113,11 +115,48 @@ public class JwtService {
      * 토큰 형식 : Bearer XXX에서 Bearer를 제외하고 순수 토큰만 가져오기 위해서
      * 헤더를 가져온 후 "Bearer"를 삭제(""로 replace)
      */
+//    public Optional<String> extractAccessToken(HttpServletRequest request) {
+//        log.info("extractAccessToken( ) 호출됨");
+//        return Optional.ofNullable(request.getHeader(accessHeader))
+//                .filter(refreshToken -> refreshToken.startsWith(BEARER))
+//                .map(refreshToken -> refreshToken.replace(BEARER, ""));
+//    }
+
     public Optional<String> extractAccessToken(HttpServletRequest request) {
-        return Optional.ofNullable(request.getHeader(accessHeader))
-                .filter(refreshToken -> refreshToken.startsWith(BEARER))
-                .map(refreshToken -> refreshToken.replace(BEARER, ""));
+        log.info("extractAccessToken() 호출됨");
+        String requestUri = request.getRequestURI();
+        log.info("Request URI: {}", requestUri);
+
+        // OAuth2 인증 요청인 경우, 액세스 토큰을 추출하지 않음
+        if (requestUri.startsWith("/oauth2/authorization")) {
+            log.warn("OAuth2 인증 요청 경로에서 액세스 토큰을 추출하지 않음. 요청 URI: {}", requestUri);
+            return Optional.empty();
+        }
+
+        // Authorization 헤더에서 값을 추출
+        String accessHeaderValue = request.getHeader(accessHeader);
+        if (accessHeaderValue == null) {
+            log.warn("Authorization 헤더가 없습니다.");
+            return Optional.empty();
+        }
+
+        if (!accessHeaderValue.startsWith(BEARER)) {
+            log.warn("Authorization 헤더가 'Bearer '로 시작하지 않습니다. 해당 값: {}", accessHeaderValue);
+            return Optional.empty();
+        }
+
+        String accessToken = accessHeaderValue.replace(BEARER, "").trim();
+        if (accessToken.isEmpty()) {
+            log.warn("추출된 AccessToken이 비어 있습니다.");
+            return Optional.empty();
+        }
+
+        log.info("추출된 AccessToken: {}", accessToken);
+        return Optional.of(accessToken);
     }
+
+
+
 
     /**
      * AccessToken에서 Email 추출
@@ -127,6 +166,8 @@ public class JwtService {
      * 유효하지 않다면 빈 Optional 객체 반환
      */
     public Optional<String> extractEmail(String accessToken) {
+        log.info("extractEmail() 호출됨");
+
         try {
             // 토큰 유효성 검사하는 데에 사용할 알고리즘이 있는 JWT verifier builder 반환
             return Optional.ofNullable(JWT.require(Algorithm.HMAC512(secretKey))
@@ -166,6 +207,8 @@ public class JwtService {
     }
 
     public boolean isTokenValid(String token) {
+        log.info("isTokenValid() 호출됨");
+
         try {
             JWT.require(Algorithm.HMAC512(secretKey)).build().verify(token);
             return true;
