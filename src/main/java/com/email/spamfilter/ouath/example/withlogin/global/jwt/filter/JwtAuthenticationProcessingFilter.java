@@ -45,7 +45,8 @@ public class JwtAuthenticationProcessingFilter extends OncePerRequestFilter {
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
-        if (request.getRequestURI().equals(NO_CHECK_URL)) {
+        if (request.getRequestURI().equals(NO_CHECK_URL) || request.getRequestURI().startsWith("/oauth2")  ) {
+            log.info("로그인 관련 요청이므로 필터를 건너뛰고 다음 필터로 진행합니다.");
             filterChain.doFilter(request, response); // "/login" 요청이 들어오면, 다음 필터 호출
             return; // return으로 이후 현재 필터 진행 막기 (안해주면 아래로 내려가서 계속 필터 진행시킴)
         }
@@ -62,7 +63,7 @@ public class JwtAuthenticationProcessingFilter extends OncePerRequestFilter {
         // RefreshToken까지 보낸 것이므로 리프레시 토큰이 DB의 리프레시 토큰과 일치하는지 판단 후,
         // 일치한다면 AccessToken을 재발급해준다.
         if (refreshToken != null) {
-            jwtService.updateRefreshToken(response, refreshToken);
+            jwtService.reIssueAccessToken(response, refreshToken);
             return; // RefreshToken을 보낸 경우에는 AccessToken을 재발급 하고 인증 처리는 하지 않게 하기위해 바로 return으로 필터 진행 막기
         }
 
@@ -76,30 +77,13 @@ public class JwtAuthenticationProcessingFilter extends OncePerRequestFilter {
 
 
 
-    /**
-     * [액세스 토큰 체크 & 인증 처리 메소드]
-     * request에서 extractAccessToken()으로 액세스 토큰 추출 후, isTokenValid()로 유효한 토큰인지 검증
-     * 유효한 토큰이면, 액세스 토큰에서 extractEmail로 Email을 추출한 후 findByEmail()로 해당 이메일을 사용하는 유저 객체 반환
-     * 그 유저 객체를 saveAuthentication()으로 인증 처리하여
-     * 인증 허가 처리된 객체를 SecurityContextHolder에 담기
-     * 그 후 다음 인증 필터로 진행
-     */
     public void checkAccessTokenAndAuthentication(HttpServletRequest request, HttpServletResponse response,
                                                   FilterChain filterChain) throws ServletException, IOException {
-        log.info("checkAccessTokenAndAuthentication() 호출");
-        // OAuth2 로그인 관련 URL이거나, 로그인 관련 요청인 경우에는 토큰 검증을 건너뜁니다.
-        if (request.getRequestURI().startsWith("/oauth2")|| request.getRequestURI().contains("authorization")) {
-            log.info("OAuth2 관련 요청이므로 필터를 건너뛰고 다음 필터로 진행합니다.");
-            filterChain.doFilter(request, response);
-            return;
-        }
 
         // AccessToken을 추출하여 검증
         jwtService.extractAccessToken(request)
-                .filter(jwtService::isTokenValid)
-                .ifPresent(accessToken -> jwtService.extractEmail(accessToken)
-                        .ifPresent(email -> userRepository.findByEmail(email)
-                                .ifPresent(this::saveAuthentication)));
+                .flatMap(jwtService::authenticateAccessToken)
+                .ifPresent(this::saveAuthentication);
 
         log.info("checkAccessTokenAndAuthentication() 실행 완료, 다음 필터로 진입 시도");
 

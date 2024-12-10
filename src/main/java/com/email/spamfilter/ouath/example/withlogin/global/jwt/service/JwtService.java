@@ -208,10 +208,11 @@ public class JwtService {
     }
 
     /**
-     * RefreshToken DB 저장(업데이트)
+     * Access Token 재발급
+     * RefreshToken 을 활용해 검증 및 RefreshTokne 도 재발급 받고 update 함
      */
-    public String updateRefreshToken(HttpServletResponse response, String refreshToken) {
-        log.info("updateRefreshToken() 호출됨");
+    public void reIssueAccessToken(HttpServletResponse response, String refreshToken) {
+        log.info("reIssueAccessToken() 호출됨");
 
         // RefreshToken으로 사용자 조회
         User user = userRepository.findByRefreshToken(refreshToken)
@@ -230,8 +231,14 @@ public class JwtService {
         log.info("새로운 AccessToken 및 RefreshToken 발급 완료");
         log.info("AccessToken: {}, RefreshToken: {}", reIssuedAccessToken, reIssuedRefreshToken);
 
-        return reIssuedRefreshToken;
     }
+
+    public Optional<User> authenticateAccessToken(String accessToken) {
+        return extractEmail(accessToken)
+                .flatMap(userRepository::findByEmail);
+    }
+
+
 
 
 }
