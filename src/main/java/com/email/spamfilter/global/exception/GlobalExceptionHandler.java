@@ -1,5 +1,6 @@
 package com.email.spamfilter.global.exception;
 
+import com.auth0.jwt.exceptions.JWTVerificationException;
 import com.email.spamfilter.global.base.dto.response.AbstractResponseBody;
 import com.email.spamfilter.global.base.dto.response.CustomResponseUtil;
 import lombok.RequiredArgsConstructor;
@@ -27,6 +28,15 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(exceptionType.getStatus())
                 .body(CustomResponseUtil.createFailureResponse(exceptionType));
     }
+
+    @ExceptionHandler(JWTVerificationException.class)
+    public ResponseEntity<AbstractResponseBody<Void>> handleJWTVerificationException(JWTVerificationException ex) {
+        log.error("JWTVerificationException 발생 (유효하지 않은 토큰입니다) : {}", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .body(CustomResponseUtil.createFailureResponse(ExceptionType.ACCESSTOKEN_INVALID));
+    }
+
+
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<AbstractResponseBody<Void>> methodArgumentNotValidException(MethodArgumentNotValidException e) {

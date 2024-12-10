@@ -1,7 +1,5 @@
 package com.email.spamfilter.ouath.example.withlogin.global.jwt.filter;
 
-import com.email.spamfilter.global.exception.BusinessException;
-import com.email.spamfilter.global.exception.ExceptionType;
 import com.email.spamfilter.ouath.example.withlogin.domain.user.User;
 import com.email.spamfilter.ouath.example.withlogin.domain.user.repository.UserRepository;
 import com.email.spamfilter.ouath.example.withlogin.global.jwt.service.JwtService;
@@ -42,7 +40,7 @@ public class JwtAuthenticationProcessingFilter extends OncePerRequestFilter {
     private static final String NO_CHECK_URL = "/login"; // "/login"으로 들어오는 요청은 Filter 작동 X
 
     private final JwtService jwtService;
-    private final UserRepository userRepository;
+//    private final UserRepository userRepository;
 
     private GrantedAuthoritiesMapper authoritiesMapper = new NullAuthoritiesMapper();
 
@@ -65,7 +63,7 @@ public class JwtAuthenticationProcessingFilter extends OncePerRequestFilter {
         // RefreshToken까지 보낸 것이므로 리프레시 토큰이 DB의 리프레시 토큰과 일치하는지 판단 후,
         // 일치한다면 AccessToken을 재발급해준다.
         if (refreshToken != null) {
-            checkRefreshTokenAndReIssueAccessToken(response, refreshToken);
+            jwtService.updateRefreshToken(response, refreshToken);
             return; // RefreshToken을 보낸 경우에는 AccessToken을 재발급 하고 인증 처리는 하지 않게 하기위해 바로 return으로 필터 진행 막기
         }
 
@@ -77,33 +75,7 @@ public class JwtAuthenticationProcessingFilter extends OncePerRequestFilter {
         }
     }
 
-    /**
-     *  [리프레시 토큰으로 유저 정보 찾기 & 액세스 토큰/리프레시 토큰 재발급 메소드]
-     *  파라미터로 들어온 헤더에서 추출한 리프레시 토큰으로 DB에서 유저를 찾고, 해당 유저가 있다면
-     *  JwtService.createAccessToken()으로 AccessToken 생성,
-     *  reIssueRefreshToken()로 리프레시 토큰 재발급 & DB에 리프레시 토큰 업데이트 메소드 호출
-     *  그 후 JwtService.sendAccessTokenAndRefreshToken()으로 응답 헤더에 보내기
-     */
-    public void checkRefreshTokenAndReIssueAccessToken(HttpServletResponse response, String refreshToken) {
-        userRepository.findByRefreshToken(refreshToken)
-                .ifPresent(user -> {
-                    String reIssuedRefreshToken = reIssueRefreshToken(user);
-                    jwtService.sendAccessAndRefreshToken(response, jwtService.createAccessToken(user.getEmail()),
-                            reIssuedRefreshToken);
-                });
-    }
 
-    /**
-     * [리프레시 토큰 재발급 & DB에 리프레시 토큰 업데이트 메소드]
-     * jwtService.createRefreshToken()으로 리프레시 토큰 재발급 후
-     * DB에 재발급한 리프레시 토큰 업데이트 후 Flush
-     */
-    private String reIssueRefreshToken(User user) {
-        String reIssuedRefreshToken = jwtService.createRefreshToken();
-        user.updateRefreshToken(reIssuedRefreshToken);
-        userRepository.saveAndFlush(user);
-        return reIssuedRefreshToken;
-    }
 
     /**
      * [액세스 토큰 체크 & 인증 처리 메소드]

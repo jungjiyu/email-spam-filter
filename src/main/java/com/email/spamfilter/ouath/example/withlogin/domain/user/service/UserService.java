@@ -5,6 +5,7 @@ import com.email.spamfilter.ouath.example.withlogin.domain.user.User;
 import com.email.spamfilter.ouath.example.withlogin.domain.user.dto.UserSignUpDto;
 import com.email.spamfilter.ouath.example.withlogin.domain.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -18,6 +19,11 @@ public class UserService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
 
+    /**
+     * 자체 회원가입을 위한 메서드
+     * @param userSignUpDto
+     * @throws Exception
+     */
     public void signUp(UserSignUpDto userSignUpDto) throws Exception {
 
         if (userRepository.findByEmail(userSignUpDto.getEmail()).isPresent()) {

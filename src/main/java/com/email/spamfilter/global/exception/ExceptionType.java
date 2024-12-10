@@ -25,6 +25,7 @@ public enum ExceptionType {
     // security
     ACCESSTOKEN_EXTRACT_FAIL_ERROR(NOT_ACCEPTABLE , "s001","access token 추출 실패"),
     EMAIL_EXTRACT_FAIL_ERROR(NOT_ACCEPTABLE , "s002","email 추출 실패"),
+    ACCESSTOKEN_INVALID(NOT_ACCEPTABLE , "s003","유효하지 않은 access token"),
 
 
     // user

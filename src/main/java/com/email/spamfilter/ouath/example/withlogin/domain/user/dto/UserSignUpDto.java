@@ -4,6 +4,9 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+/**
+ * 자체 회원 가입을 위한 DTO
+ */
 @NoArgsConstructor
 @Getter
 public class UserSignUpDto {

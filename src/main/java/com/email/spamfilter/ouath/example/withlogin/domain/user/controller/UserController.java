@@ -32,6 +32,7 @@ public class UserController {
     public String signUp(@ModelAttribute UserSignUpDto userSignUpDto) throws Exception {
         // 회원가입 처리
         userService.signUp(userSignUpDto);
+        log.info("post signUp 방문");
 
         // 회원가입 성공 후 리다이렉트 또는 페이지 반환
         return "redirect:/login"; // 로그인 페이지로 리다이렉트 또는 다른 페이지로 이동

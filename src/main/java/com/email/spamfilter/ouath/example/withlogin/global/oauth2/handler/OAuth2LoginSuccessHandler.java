@@ -13,6 +13,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
 import org.springframework.stereotype.Component;
 
@@ -25,8 +26,33 @@ import java.io.IOException;
 public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
 
     private final JwtService jwtService;
-//    private final UserRepository userRepository;
-    private final UserService userService;
+    private final UserRepository userRepository;
+
+
+
+    public void tempsignUp(UserSignUpDto userSignUpDto) throws Exception {
+        log.info("tempsignUp 호출됨");
+
+        if (userRepository.findByEmail(userSignUpDto.getEmail()).isPresent()) {
+            throw new Exception("이미 존재하는 이메일입니다.");
+        }
+
+        if (userRepository.findByNickname(userSignUpDto.getNickname()).isPresent()) {
+            throw new Exception("이미 존재하는 닉네임입니다.");
+        }
+
+        // password 설정은 아직 안함
+        User user = User.builder()
+                .email(userSignUpDto.getEmail())
+                .nickname(userSignUpDto.getNickname())
+                .age(userSignUpDto.getAge())
+                .city(userSignUpDto.getCity())
+                .role(Role.USER)
+                .build();
+
+        userRepository.save(user);
+    }
+
 
     @Override
     public void onAuthenticationSuccess(HttpServletRequest request, HttpServletResponse response, Authentication authentication) throws IOException, ServletException {
@@ -40,11 +66,12 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
             // 회원가입 처리 로직
             UserSignUpDto userSignUpDto = new UserSignUpDto();
             userSignUpDto.setEmail(oAuth2User.getEmail());
-            userSignUpDto.setNickname(oAuth2User.getNickname());
+            userSignUpDto.setNickname(oAuth2User.getNickName());
             // 추가적인 정보들 (ex: age, city 등)도 채울 수 있습니다.
 
             // 회원가입 서비스 호출
-            userService.signUp(userSignUpDto);
+//            userService.signUp(userSignUpDto);
+            this.tempsignUp(userSignUpDto);
 
 
 
@@ -57,12 +84,13 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
             // 회원가입 후에 바로 응답을 보내거나, 리다이렉트를 하지 않고 완료된 메시지 또는 JSON 응답을 클라이언트에 전달할 수 있음
             response.setStatus(HttpServletResponse.SC_OK);
             response.getWriter().write("회원가입 성공");
+            log.info("onAuthenticationSuccess 에서 회원가입 성공");
 
         }
         else {
             log.info("로그인에 성공");
             // GUEST가 아닌 경우에는 정상적인 로그인 완료 처리를 진행 (필요 시 추가 로직)
-            log.info("회원 가입 완료된 사용자: {}", oAuth2User.getEmail());
+            log.info("이미 회원 가입 완료된 사용자: {}", oAuth2User.getEmail());
 
             loginSuccess(response, oAuth2User); // 로그인에 성공한 경우 access, refresh token 등을 처리
         }
@@ -108,6 +136,6 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
         response.addHeader(jwtService.getRefreshHeader(), "Bearer " + refreshToken);
 
         jwtService.sendAccessAndRefreshToken(response, accessToken, refreshToken);
-        jwtService.updateRefreshToken(oAuth2User.getEmail(), refreshToken);
+        jwtService.updateRefreshToken(response, refreshToken);
     }
 }
