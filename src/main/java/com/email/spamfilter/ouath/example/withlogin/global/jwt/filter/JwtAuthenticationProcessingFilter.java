@@ -80,6 +80,24 @@ public class JwtAuthenticationProcessingFilter extends OncePerRequestFilter {
     public void checkAccessTokenAndAuthentication(HttpServletRequest request, HttpServletResponse response,
                                                   FilterChain filterChain) throws ServletException, IOException {
 
+
+        // SecurityContextHolder에 인증 객체가 이미 존재하는지 확인
+        if (SecurityContextHolder.getContext().getAuthentication() != null) {
+            log.info("SecurityContext에 인증 객체가 존재하므로 필터의 다음 과정을 건너뜁니다.");
+            filterChain.doFilter(request, response);
+            return;
+        }
+
+        // AccessToken을 추출하여 검증 및 인증 처리
+        jwtService.extractAccessToken(request)
+                .flatMap(jwtService::authenticateAccessToken)
+                .ifPresent(this::saveAuthentication);
+
+        log.info("checkAccessTokenAndAuthentication() 실행 완료, 다음 필터로 진입 시도");
+
+        filterChain.doFilter(request, response);
+
+
         // AccessToken을 추출하여 검증
         jwtService.extractAccessToken(request)
                 .flatMap(jwtService::authenticateAccessToken)
@@ -106,27 +124,35 @@ public class JwtAuthenticationProcessingFilter extends OncePerRequestFilter {
      * SecurityContextHolder.getContext()로 SecurityContext를 꺼낸 후,
      * setAuthentication()을 이용하여 위에서 만든 Authentication 객체에 대한 인증 허가 처리
      */
-    public void saveAuthentication(User myUser) {
+    public void saveAuthentication(User user) {
         log.info("saveAuthentication() 호출됨");
 
-        String password = myUser.getPassword();
-        if (password == null) { // 소셜 로그인 유저의 비밀번호 임의로 설정 하여 소셜 로그인 유저도 인증 되도록 설정
-            password = PasswordUtil.generateRandomPassword();
-        }
+        // 소셜 로그인 전용이라 생password 로직 생략함
+//        String password = user.getPassword();
+//        if (password == null) { // 소셜 로그인 유저의 비밀번호 임의로 설정 하여 소셜 로그인 유저도 인증 되도록 설정
+//            password = PasswordUtil.generateRandomPassword();
+//        }
+
+
 
         UserDetails userDetailsUser = org.springframework.security.core.userdetails.User.builder()
-                .username(myUser.getEmail())
-                .password(password)
-                .roles(myUser.getRole().name())
+                .username(user.getEmail())
+//                .password(password)
+                .roles(user.getRole().name())
                 .build();
 
         log.info("userDetailsUser 객체 생성: {}",userDetailsUser.toString());
 
         Authentication authentication =
-                new UsernamePasswordAuthenticationToken(userDetailsUser, null,
-                authoritiesMapper.mapAuthorities(userDetailsUser.getAuthorities()));
-        log.info("authentication 객체 생성: {}",authentication.toString());
+                new UsernamePasswordAuthenticationToken(
+                        userDetailsUser,
+                        null,
+                        userDetailsUser.getAuthorities()
+                );
 
+        log.info("Authentication 객체 생성 완료: {}", authentication);
+
+        // SecurityContextHolder에 저장
         SecurityContextHolder.getContext().setAuthentication(authentication);
         log.info("authentication 객체 securityContextHodler에 저장됨");
     }
