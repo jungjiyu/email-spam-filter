@@ -10,6 +10,7 @@ import com.email.spamfilter.ouath.example.withlogin.global.oauth2.userinfo.OAuth
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
+import lombok.extern.slf4j.Slf4j;
 
 import java.util.Map;
 import java.util.UUID;
@@ -21,6 +22,7 @@ import java.util.UUID;
 @Getter
 @Builder
 @AllArgsConstructor
+@Slf4j
 public class OAuthAttributes {
 
     private String nameAttributeKey; // OAuth2 로그인 진행 시 키가 되는 필드 값, PK와 같은 의미

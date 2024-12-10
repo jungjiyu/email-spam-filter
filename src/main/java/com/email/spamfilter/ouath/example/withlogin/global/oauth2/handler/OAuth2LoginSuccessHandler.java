@@ -1,5 +1,7 @@
 package com.email.spamfilter.ouath.example.withlogin.global.oauth2.handler;
 
+import com.email.spamfilter.global.exception.BusinessException;
+import com.email.spamfilter.global.exception.ExceptionType;
 import com.email.spamfilter.ouath.example.withlogin.domain.user.Role;
 import com.email.spamfilter.ouath.example.withlogin.domain.user.User;
 import com.email.spamfilter.ouath.example.withlogin.domain.user.repository.UserRepository;
@@ -15,13 +17,14 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.io.IOException;
 
 @Slf4j
 @Component
 @RequiredArgsConstructor
-//@Transactional
+@Transactional
 public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
 
     private final JwtService jwtService;
@@ -33,22 +36,25 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
 
     @Override
     public void onAuthenticationSuccess(HttpServletRequest request, HttpServletResponse response, Authentication authentication) throws IOException, ServletException {
-    log.info("OAuth2 Login 성공!");
+    log.info("OAuth2 Login 성공하여 onAuthenticationSuccess 호줄됨");
     try {
         CustomOAuth2User oAuth2User = (CustomOAuth2User) authentication.getPrincipal();
 
         // User의 Role이 GUEST일 경우 회원가입 로직 수행
         if(oAuth2User.getRole() == Role.GUEST) {
-
-            User user = User.builder().
-                    role(Role.USER).
-                    email(oAuth2User.getEmail()).
-                    nickname(oAuth2User.getNickName()).build();
-
-            userRepository.save(user);
+            log.info("{} 는 role 이 GUEST ", oAuth2User.getEmail());
+            User user = userRepository.findByEmail(oAuth2User.getEmail()).orElseThrow(()->new BusinessException(ExceptionType.USER_NOT_FOUND));
 
             String accessToken = jwtService.createAccessToken(oAuth2User.getEmail());
             String refreshToken = jwtService.createRefreshToken();
+
+            //TODO : 왜 더티채킹이 안되지? 왜 직접 save 를 해줘야되지?
+            user.updateRefreshToken(refreshToken);
+            user.authorizeUser(); // role 을 USER 로 변경
+            userRepository.save(user);
+
+
+
 
 //            response.addHeader(jwtService.getAccessHeader(), "Bearer " + accessToken);
 
@@ -63,14 +69,14 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
 
         }
         else {
-            log.info("로그인에 성공");
-            // GUEST가 아닌 경우에는 정상적인 로그인 완료 처리를 진행 (필요 시 추가 로직)
+            log.info(" onAuthenticationSuccess 에서 로그인 성공");
+            // GUEST가 아닌 경우에는 정상적인 로그인 완료 처리를 진행
             log.info("이미 회원 가입 완료된 사용자: {}", oAuth2User.getEmail());
 
             loginSuccess(response, oAuth2User); // 로그인에 성공한 경우 access, refresh token 등을 처리
         }
     } catch (Exception e) {
-        log.error("OAuth2 Login 실패", e);
+        log.error("OAuth2 Login 통한 로그인 실패", e);
     }
 }
 
@@ -111,6 +117,9 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
         response.addHeader(jwtService.getRefreshHeader(), "Bearer " + refreshToken);
 
         jwtService.sendAccessAndRefreshToken(response, accessToken, refreshToken);
-        jwtService.reIssueAccessToken(response, refreshToken);
+        log.info("loginSuccess에서 sendAccessAndRefreshToken 성공");
+//        jwtService.reIssueAccessToken(response, refreshToken);
+//        log.info("loginSuccess에서 reIssueAccessToken 성공");
+
     }
 }

@@ -3,6 +3,7 @@ package com.email.spamfilter.ouath.example.withlogin.global.oauth2;
 import com.email.spamfilter.ouath.example.withlogin.domain.user.Role;
 import lombok.Builder;
 import lombok.Getter;
+import lombok.ToString;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.oauth2.core.user.DefaultOAuth2User;
 
@@ -15,6 +16,7 @@ import java.util.Map;
  * 리소스서버에게 받아온 정보 +α 를 담을 DTO
  */
 @Getter
+@ToString
 public class CustomOAuth2User extends DefaultOAuth2User {
 
     // 리소스 서버로부터 받은 email 정보를 저장하기 위함

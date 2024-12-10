@@ -81,24 +81,7 @@ public class JwtAuthenticationProcessingFilter extends OncePerRequestFilter {
                                                   FilterChain filterChain) throws ServletException, IOException {
 
 
-        // SecurityContextHolder에 인증 객체가 이미 존재하는지 확인
-        if (SecurityContextHolder.getContext().getAuthentication() != null) {
-            log.info("SecurityContext에 인증 객체가 존재하므로 필터의 다음 과정을 건너뜁니다.");
-            filterChain.doFilter(request, response);
-            return;
-        }
-
         // AccessToken을 추출하여 검증 및 인증 처리
-        jwtService.extractAccessToken(request)
-                .flatMap(jwtService::authenticateAccessToken)
-                .ifPresent(this::saveAuthentication);
-
-        log.info("checkAccessTokenAndAuthentication() 실행 완료, 다음 필터로 진입 시도");
-
-        filterChain.doFilter(request, response);
-
-
-        // AccessToken을 추출하여 검증
         jwtService.extractAccessToken(request)
                 .flatMap(jwtService::authenticateAccessToken)
                 .ifPresent(this::saveAuthentication);
