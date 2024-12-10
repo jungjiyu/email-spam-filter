@@ -2,6 +2,10 @@ package com.email.spamfilter.ouath.example.withlogin.global.jwt.service;
 
 import com.auth0.jwt.JWT;
 import com.auth0.jwt.algorithms.Algorithm;
+import com.auth0.jwt.interfaces.DecodedJWT;
+import com.email.spamfilter.global.exception.BusinessException;
+import com.email.spamfilter.global.exception.ExceptionType;
+import com.email.spamfilter.ouath.example.withlogin.domain.user.User;
 import com.email.spamfilter.ouath.example.withlogin.domain.user.repository.UserRepository;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -158,27 +162,35 @@ public class JwtService {
 
 
 
+
     /**
-     * AccessToken에서 Email 추출
-     * 추출 전에 JWT.require()로 검증기 생성
-     * verify로 AceessToken 검증 후
-     * 유효하다면 getClaim()으로 이메일 추출
-     * 유효하지 않다면 빈 Optional 객체 반환
+     * JWT verifier 생성 ( AccessToken의 유효성을 검증 )
+     * verify 실패 시 JWTVerificationException throw
+     * @param token
+     * @return
+     */
+    private DecodedJWT verifyToken(String token) {
+        return JWT.require(Algorithm.HMAC512(secretKey))
+                .build()
+                .verify(token);
+    }
+
+    /**
+     * AccessToken에서 Email 관련 cliam 추출
      */
     public Optional<String> extractEmail(String accessToken) {
         log.info("extractEmail() 호출됨");
+        String email = verifyToken(accessToken).getClaim(EMAIL_CLAIM).asString();
+        log.info("extracted Email : {} " ,email);
+        return Optional.ofNullable(email);
+    }
 
-        try {
-            // 토큰 유효성 검사하는 데에 사용할 알고리즘이 있는 JWT verifier builder 반환
-            return Optional.ofNullable(JWT.require(Algorithm.HMAC512(secretKey))
-                    .build() // 반환된 빌더로 JWT verifier 생성
-                    .verify(accessToken) // accessToken을 검증하고 유효하지 않다면 예외 발생
-                    .getClaim(EMAIL_CLAIM) // claim(Emial) 가져오기
-                    .asString());
-        } catch (Exception e) {
-            log.error("액세스 토큰이 유효하지 않습니다.");
-            return Optional.empty();
-        }
+    /**
+     * AccessToken 의 유효성 여부를 boolean 값으로 반환
+     */
+    public boolean isTokenValid(String token) {
+        log.info("isTokenValid() 호출됨");
+        return verifyToken(token) != null ;
     }
 
     /**
@@ -198,23 +210,28 @@ public class JwtService {
     /**
      * RefreshToken DB 저장(업데이트)
      */
-    public void updateRefreshToken(String email, String refreshToken) {
-        userRepository.findByEmail(email)
-                .ifPresentOrElse(
-                        user -> user.updateRefreshToken(refreshToken),
-                        () -> new Exception("일치하는 회원이 없습니다.")
-                );
+    public String updateRefreshToken(HttpServletResponse response, String refreshToken) {
+        log.info("updateRefreshToken() 호출됨");
+
+        // RefreshToken으로 사용자 조회
+        User user = userRepository.findByRefreshToken(refreshToken)
+                .orElseThrow(() -> new BusinessException(ExceptionType.USER_NOT_FOUND));
+
+        // RefreshToken 및 AccessToken 재발급
+        String reIssuedRefreshToken = createRefreshToken();
+        String reIssuedAccessToken = createAccessToken(user.getEmail());
+
+        // 사용자 엔티티의 RefreshToken 업데이트
+        user.updateRefreshToken(reIssuedRefreshToken);
+
+        // sendAccessAndRefreshToken을 통해 새 토큰 반환
+        sendAccessAndRefreshToken(response, reIssuedAccessToken, reIssuedRefreshToken);
+
+        log.info("새로운 AccessToken 및 RefreshToken 발급 완료");
+        log.info("AccessToken: {}, RefreshToken: {}", reIssuedAccessToken, reIssuedRefreshToken);
+
+        return reIssuedRefreshToken;
     }
 
-    public boolean isTokenValid(String token) {
-        log.info("isTokenValid() 호출됨");
 
-        try {
-            JWT.require(Algorithm.HMAC512(secretKey)).build().verify(token);
-            return true;
-        } catch (Exception e) {
-            log.error("유효하지 않은 토큰입니다. {}", e.getMessage());
-            return false;
-        }
-    }
 }
