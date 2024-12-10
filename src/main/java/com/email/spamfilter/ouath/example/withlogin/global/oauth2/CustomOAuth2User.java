@@ -9,24 +9,22 @@ import org.springframework.security.oauth2.core.user.DefaultOAuth2User;
 import java.util.Collection;
 import java.util.Map;
 
+
+
 /**
- * DefaultOAuth2User를 상속하고, email과 role 필드를 추가로 가진다.
+ * 리소스서버에게 받아온 정보 +α 를 담을 DTO
  */
 @Getter
 public class CustomOAuth2User extends DefaultOAuth2User {
 
+    // 리소스 서버로부터 받은 email 정보를 저장하기 위함
     private String email;
+    // (리소스 서버에서의 로그인 성공 이후) 회원가입로직 수행 필요 여부를 판별하기 위함
     private Role role;
+    // 리소스 서버로부터 받은 email 정보를 저장하기 위함
     private String nickName;
 
-    /**
-     * Constructs a {@code DefaultOAuth2User} using the provided parameters.
-     *
-     * @param authorities      the authorities granted to the user
-     * @param attributes       the attributes about the user
-     * @param nameAttributeKey the key used to access the user's &quot;name&quot; from
-     *                         {@link #getAttributes()}
-     */
+
     public CustomOAuth2User(Collection<? extends GrantedAuthority> authorities,
                             Map<String, Object> attributes, String nameAttributeKey,
                             String email, Role role, String nickName) {

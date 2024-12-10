@@ -99,7 +99,7 @@ public class JwtService {
 
         setAccessTokenHeader(response, accessToken);
         setRefreshTokenHeader(response, refreshToken);
-        log.info("Access Token, Refresh Token 헤더 설정 완료 : {}",response.toString());
+        log.info("Access Token, Refresh Token 헤더 설정 완료");
 
     }
 
@@ -132,9 +132,14 @@ public class JwtService {
         log.info("Request URI: {}", requestUri);
 
         // OAuth2 인증 요청인 경우, 액세스 토큰을 추출하지 않음
-        if (requestUri.startsWith("/oauth2/authorization")) {
+        if (requestUri.startsWith("/oauth2/authorization")  ) {
             log.warn("OAuth2 인증 요청 경로에서 액세스 토큰을 추출하지 않음. 요청 URI: {}", requestUri);
             return Optional.empty();
+        }
+        else if(requestUri.startsWith("/favicon.ico")){
+            log.warn("favicon.ico 대해서는 액세스 토큰을 추출하지 않음. 요청 URI: {}", requestUri);
+            return Optional.empty();
+
         }
 
         // Authorization 헤더에서 값을 추출

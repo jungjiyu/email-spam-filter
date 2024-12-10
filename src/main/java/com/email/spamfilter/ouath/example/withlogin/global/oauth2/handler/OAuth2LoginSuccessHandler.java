@@ -2,7 +2,6 @@ package com.email.spamfilter.ouath.example.withlogin.global.oauth2.handler;
 
 import com.email.spamfilter.ouath.example.withlogin.domain.user.Role;
 import com.email.spamfilter.ouath.example.withlogin.domain.user.User;
-import com.email.spamfilter.ouath.example.withlogin.domain.user.dto.UserSignUpDto;
 import com.email.spamfilter.ouath.example.withlogin.domain.user.repository.UserRepository;
 import com.email.spamfilter.ouath.example.withlogin.domain.user.service.UserService;
 import com.email.spamfilter.ouath.example.withlogin.global.jwt.service.JwtService;
@@ -30,28 +29,6 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
 
 
 
-    public void tempsignUp(UserSignUpDto userSignUpDto) throws Exception {
-        log.info("tempsignUp 호출됨");
-
-        if (userRepository.findByEmail(userSignUpDto.getEmail()).isPresent()) {
-            throw new Exception("이미 존재하는 이메일입니다.");
-        }
-
-        if (userRepository.findByNickname(userSignUpDto.getNickname()).isPresent()) {
-            throw new Exception("이미 존재하는 닉네임입니다.");
-        }
-
-        // password 설정은 아직 안함
-        User user = User.builder()
-                .email(userSignUpDto.getEmail())
-                .nickname(userSignUpDto.getNickname())
-                .age(userSignUpDto.getAge())
-                .city(userSignUpDto.getCity())
-                .role(Role.USER)
-                .build();
-
-        userRepository.save(user);
-    }
 
 
     @Override
@@ -60,29 +37,27 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
     try {
         CustomOAuth2User oAuth2User = (CustomOAuth2User) authentication.getPrincipal();
 
-        // User의 Role이 GUEST일 경우 처음 요청한 회원이므로 회원가입 페이지로 리다이렉트
+        // User의 Role이 GUEST일 경우 회원가입 로직 수행
         if(oAuth2User.getRole() == Role.GUEST) {
 
-            // 회원가입 처리 로직
-            UserSignUpDto userSignUpDto = new UserSignUpDto();
-            userSignUpDto.setEmail(oAuth2User.getEmail());
-            userSignUpDto.setNickname(oAuth2User.getNickName());
-            // 추가적인 정보들 (ex: age, city 등)도 채울 수 있습니다.
+            User user = User.builder().
+                    role(Role.USER).
+                    email(oAuth2User.getEmail()).
+                    nickname(oAuth2User.getNickName()).build();
 
-            // 회원가입 서비스 호출
-//            userService.signUp(userSignUpDto);
-            this.tempsignUp(userSignUpDto);
-
-
+            userRepository.save(user);
 
             String accessToken = jwtService.createAccessToken(oAuth2User.getEmail());
-            response.addHeader(jwtService.getAccessHeader(), "Bearer " + accessToken);
-            log.info("accessToken : {}", accessToken);
-//            response.sendRedirect("/sign-up");  // 리다이렉트 경로 수정
-            // Refresh Token 생성 및 추가
+            String refreshToken = jwtService.createRefreshToken();
+
+//            response.addHeader(jwtService.getAccessHeader(), "Bearer " + accessToken);
+
+            log.info("accessToken : {}, refreshToken : {}", accessToken,refreshToken);
+
+            // Refresh Token 과 Access Token 을 헤더에 담음
             jwtService.sendAccessAndRefreshToken(response, accessToken, null);
+
             // 회원가입 후에 바로 응답을 보내거나, 리다이렉트를 하지 않고 완료된 메시지 또는 JSON 응답을 클라이언트에 전달할 수 있음
-            response.setStatus(HttpServletResponse.SC_OK);
             response.getWriter().write("회원가입 성공");
             log.info("onAuthenticationSuccess 에서 회원가입 성공");
 

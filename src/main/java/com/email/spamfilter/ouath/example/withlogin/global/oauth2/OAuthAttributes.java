@@ -7,6 +7,7 @@ import com.email.spamfilter.ouath.example.withlogin.global.oauth2.userinfo.Googl
 import com.email.spamfilter.ouath.example.withlogin.global.oauth2.userinfo.KakaoOAuth2UserInfo;
 import com.email.spamfilter.ouath.example.withlogin.global.oauth2.userinfo.NaverOAuth2UserInfo;
 import com.email.spamfilter.ouath.example.withlogin.global.oauth2.userinfo.OAuth2UserInfo;
+import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 
@@ -18,16 +19,13 @@ import java.util.UUID;
  * 소셜별로 데이터를 받는 데이터를 분기 처리하는 DTO 클래스
  */
 @Getter
+@Builder
+@AllArgsConstructor
 public class OAuthAttributes {
 
     private String nameAttributeKey; // OAuth2 로그인 진행 시 키가 되는 필드 값, PK와 같은 의미
-    private OAuth2UserInfo oauth2UserInfo; // 소셜 타입별 로그인 유저 정보(닉네임, 이메일, 프로필 사진 등등)
+    private OAuth2UserInfo oauth2UserInfo; // 소셜 타입별 제공받는 유저 정보(닉네임, 이메일, 프로필 사진 등등)
 
-    @Builder
-    public OAuthAttributes(String nameAttributeKey, OAuth2UserInfo oauth2UserInfo) {
-        this.nameAttributeKey = nameAttributeKey;
-        this.oauth2UserInfo = oauth2UserInfo;
-    }
 
     /**
      * SocialType에 맞는 메소드 호출하여 OAuthAttributes 객체 반환
