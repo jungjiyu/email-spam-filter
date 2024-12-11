@@ -1,71 +1,136 @@
 package com.email.spamfilter.security.config;
 
+import com.email.spamfilter.user.repository.UserRepository;
+import com.email.spamfilter.security.jwt.filter.JwtAuthenticationProcessingFilter;
+import com.email.spamfilter.security.jwt.service.JwtService;
+import com.email.spamfilter.security.oauth.handler.OAuth2LoginFailureHandler;
+import com.email.spamfilter.security.oauth.handler.OAuth2LoginSuccessHandler;
+import com.email.spamfilter.security.oauth.service.CustomOAuth2UserService;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.security.access.hierarchicalroles.RoleHierarchy;
-import org.springframework.security.access.hierarchicalroles.RoleHierarchyImpl;
-import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.authentication.ProviderManager;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
+import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
-//@Configuration
-//@EnableWebSecurity
-//@RequiredArgsConstructor
-//public class SecurityConfig {
-//
+/**
+ * 인증은 CustomJsonUsernamePasswordAuthenticationFilter에서 authenticate()로 인증된 사용자로 처리
+ * JwtAuthenticationProcessingFilter는 AccessToken, RefreshToken 재발급
+ */
+
+@Configuration
+@EnableWebSecurity
+@RequiredArgsConstructor
+public class SecurityConfig {
+
+//    private final LoginService loginService;
+    private final JwtService jwtService;
+    private final UserRepository userRepository;
+    private final ObjectMapper objectMapper;
+    private final OAuth2LoginSuccessHandler oAuth2LoginSuccessHandler;
+    private final OAuth2LoginFailureHandler oAuth2LoginFailureHandler;
+    private final CustomOAuth2UserService customOAuth2UserService;
+
+    @Bean
+    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+        http
+                .httpBasic(AbstractHttpConfigurer::disable)
+                .csrf(AbstractHttpConfigurer::disable)
+                .formLogin(AbstractHttpConfigurer::disable)
+
+                // 세션 사용하지 않으므로 STATELESS로 설정
+                .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+
+                .authorizeHttpRequests((auth) -> auth
+
+                // 아이콘, css, js 관련
+                // 기본 페이지, css, image, js 하위 폴더에 있는 자료들은 모두 접근 가능, h2-console에 접근 가능
+                .requestMatchers("/","/css/**","/images/**","/js/**","/favicon.ico","/h2-console/**","/oauth2/**").permitAll()
+                .requestMatchers("/sign-up").permitAll() // 회원가입 접근 가능
+                .anyRequest().authenticated()); // 위의 경로 이외에는 모두 인증된 사용자만 접근 가능
+
+                //== 소셜 로그인 설정 ==//
+
+
+        http.oauth2Login(configure -> configure
+                .userInfoEndpoint(config -> config.userService(customOAuth2UserService))
+                .successHandler(oAuth2LoginSuccessHandler) // 동의하고 계속하기를 눌렀을 때 Handler 설정
+                .failureHandler(oAuth2LoginFailureHandler)); // 소셜 로그인 실패 시 핸들러 설정
+
+        http.addFilterBefore(jwtAuthenticationProcessingFilter(), UsernamePasswordAuthenticationFilter.class);
+
+
+//        // 원래 스프링 시큐리티 필터 순서가 LogoutFilter 이후에 로그인 필터 동작
+//        // 따라서, LogoutFilter 이후에 우리가 만든 필터 동작하도록 설정
+//        // 순서 : LogoutFilter -> JwtAuthenticationProcessingFilter -> CustomJsonUsernamePasswordAuthenticationFilter
+//        http.addFilterAfter(customJsonUsernamePasswordAuthenticationFilter(), LogoutFilter.class);
+//        http.addFilterBefore(jwtAuthenticationProcessingFilter(), CustomJsonUsernamePasswordAuthenticationFilter.class);
+
+        return http.build();
+    }
+
 //    @Bean
-//    public RoleHierarchy roleHierarchy() {
-//        RoleHierarchyImpl hierarchy = new RoleHierarchyImpl();
-//        hierarchy.setHierarchy("ROLE_ADMIN > ROLE_USER");
-//        return hierarchy;
+//    public PasswordEncoder passwordEncoder() {
+//        return PasswordEncoderFactories.createDelegatingPasswordEncoder();
+//    }
+
+    /**
+     * AuthenticationManager 설정 후 등록
+     * PasswordEncoder를 사용하는 AuthenticationProvider 지정 (PasswordEncoder는 위에서 등록한 PasswordEncoder 사용)
+     * FormLogin(기존 스프링 시큐리티 로그인)과 동일하게 DaoAuthenticationProvider 사용
+     * UserDetailsService는 커스텀 LoginService로 등록
+     * 또한, FormLogin과 동일하게 AuthenticationManager로는 구현체인 ProviderManager 사용(return ProviderManager)
+     *
+     */
+//    @Bean
+//    public AuthenticationManager authenticationManager() {
+//        DaoAuthenticationProvider provider = new DaoAuthenticationProvider();
+////        provider.setPasswordEncoder(passwordEncoder());
+////        provider.setUserDetailsService(loginService);
+//        return new ProviderManager(provider);
+//    }
+
+//    /**
+//     * 로그인 성공 시 호출되는 LoginSuccessJWTProviderHandler 빈 등록
+//     */
+//    @Bean
+//    public LoginSuccessHandler loginSuccessHandler() {
+//        return new LoginSuccessHandler(jwtService, userRepository);
 //    }
 //
+//    /**
+//     * 로그인 실패 시 호출되는 LoginFailureHandler 빈 등록
+//     */
 //    @Bean
-//    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
-//        http
-//                .httpBasic(AbstractHttpConfigurer::disable)
-//                .csrf(AbstractHttpConfigurer::disable)
-//                .formLogin(AbstractHttpConfigurer::disable)
-//
-//                /**
-//                 * .requestMatchers("/path명") // 딱 그 path 대해 접근 설정
-//                 * .requestMatchers(HttpMethod.XXXX , "/path명") // 딱 그 path && 그 httpmethod 대해 접근 설정
-//                 * .requestMatchers("/특정path명/**"") // 특정path의모든하위경로 대해 접근 설정
-//                 * .requestMatchers("/path명1", "/path명2", "/path명3") // 여러 path 대해 접근 설정
-//                 *  anyRequest() // 보통 가장 마지막에 명시, 그 이외의 모든 request 대해 적용
-//                 * .requestMatchers( .... ).permitAll() // 모든 권한 대해 접근 허용
-//                 * .requestMatchers( .... ).hasRole("권한명") // 특정 권한만 접근 허용
-//                 */
-//                .authorizeHttpRequests((auth) -> auth
-//                        .anyRequest().permitAll());
-//
-////        .oauth2Login(oauth -> oauth
-////				.authorizationEndpoint(authorizationEndpointConfig -> authorizationEndpointConfig
-////						.authorizationRequestResolver(auth2AuthorizationRequestResolver(clientRegistrationRepository))
-////				)
-////				.userInfoEndpoint(
-////						userInfoEndpointConfig -> userInfoEndpointConfig
-////								.userService(oauthUserService)
-////				)
-////				.successHandler(oauthLoginSuccessHandler())
-////		);
-////
-////                http.addFilterBefore(new JwtAuthorizationFilter(tokenProvider, authenticationManager), UsernamePasswordAuthenticationFilter.class)
-////                .exceptionHandling(e -> e
-////                        .authenticationEntryPoint(customAuthenticationEntryPoint)
-////                        .accessDeniedHandler(customAccessDeniedHandler))
-////        ;
-//
-//        return http.build();
+//    public LoginFailureHandler loginFailureHandler() {
+//        return new LoginFailureHandler();
 //    }
-////
-////    @Bean
-////    public AuthenticationManager authenticationManager(TokenProvider tokenProvider) {
-////        return new ProviderManager(tokenProvider);
-////    }
-//}
+//
+//    /**
+//     * CustomJsonUsernamePasswordAuthenticationFilter 빈 등록
+//     * 커스텀 필터를 사용하기 위해 만든 커스텀 필터를 Bean으로 등록
+//     * setAuthenticationManager(authenticationManager())로 위에서 등록한 AuthenticationManager(ProviderManager) 설정
+//     * 로그인 성공 시 호출할 handler, 실패 시 호출할 handler로 위에서 등록한 handler 설정
+//     */
+//    @Bean
+//    public CustomJsonUsernamePasswordAuthenticationFilter customJsonUsernamePasswordAuthenticationFilter() {
+//        CustomJsonUsernamePasswordAuthenticationFilter customJsonUsernamePasswordLoginFilter
+//                = new CustomJsonUsernamePasswordAuthenticationFilter(objectMapper);
+//        customJsonUsernamePasswordLoginFilter.setAuthenticationManager(authenticationManager());
+//        customJsonUsernamePasswordLoginFilter.setAuthenticationSuccessHandler(loginSuccessHandler());
+//        customJsonUsernamePasswordLoginFilter.setAuthenticationFailureHandler(loginFailureHandler());
+//        return customJsonUsernamePasswordLoginFilter;
+//    }
+
+    @Bean
+    public JwtAuthenticationProcessingFilter jwtAuthenticationProcessingFilter() {
+        JwtAuthenticationProcessingFilter jwtAuthenticationFilter = new JwtAuthenticationProcessingFilter(jwtService);
+        return jwtAuthenticationFilter;
+    }
+
+
+}
