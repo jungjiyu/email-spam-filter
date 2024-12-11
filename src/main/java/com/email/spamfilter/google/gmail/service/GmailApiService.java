@@ -14,31 +14,35 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional
-@Slf4j
 public class GmailApiService {
-    private final OAuth2AuthorizedClientService authorizedClientService;
-    public void fetchEmails(OAuth2User user) throws IOException {
-        // Access Token 가져오기
-        OAuth2AuthorizedClient client = authorizedClientService.loadAuthorizedClient(
-                "google", user.getName());
-        String accessToken = client.getAccessToken().getTokenValue();
 
-        // Gmail API 클라이언트 초기화
-        Gmail gmail = new Gmail.Builder(
-                new com.google.api.client.http.javanet.NetHttpTransport(),
-                GsonFactory.getDefaultInstance(), // 흠.. 일단 JsonFactory.getDefaultInstacne()  는 빨간줄 떠서 수정함. abstract 라서 그랬나??
-                request -> request.getHeaders().setAuthorization("Bearer " + accessToken)
-        ).setApplicationName("My Gmail API App").build();
+    private final Gmail gmail;
 
-        // Gmail API 호출 - 예: 메시지 리스트 가져오기
-        ListMessagesResponse messages = gmail.users().messages().list("me").execute();
-        messages.getMessages().forEach(message -> {
-            System.out.println("Message ID: " + message.getId());
-        });
+    public List<Message> getEmails(String userId) {
+        try {
+            log.info("Fetching emails for userId: {}", userId);
+
+            // Gmail API의 'users.messages.list' 호출
+            ListMessagesResponse response = gmail.users().messages().list(userId).execute();
+            List<Message> messages = new ArrayList<>();
+            if (response.getMessages() != null) {
+                for (Message message : response.getMessages()) {
+                    // 각 메시지 정보를 Gmail API에서 가져옴
+                    Message fullMessage = gmail.users().messages().get(userId, message.getId()).execute();
+                    messages.add(fullMessage);
+                }
+            }
+            return messages;
+        } catch (IOException e) {
+            log.error("Error while fetching emails", e);
+            throw new RuntimeException("이메일 목록을 가져오는 중 오류가 발생했습니다.", e);
+        }
     }
 }

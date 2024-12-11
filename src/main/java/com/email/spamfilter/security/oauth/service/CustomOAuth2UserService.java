@@ -1,5 +1,7 @@
 package com.email.spamfilter.security.oauth.service;
 
+import com.email.spamfilter.global.exception.BusinessException;
+import com.email.spamfilter.global.exception.ExceptionType;
 import com.email.spamfilter.user.enums.SocialType;
 import com.email.spamfilter.user.entity.User;
 import com.email.spamfilter.user.repository.UserRepository;
@@ -7,6 +9,7 @@ import com.email.spamfilter.security.oauth.dto.CustomOAuth2User;
 import com.email.spamfilter.security.oauth.dto.OAuthAttributes;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.oauth2.client.userinfo.DefaultOAuth2UserService;
 import org.springframework.security.oauth2.client.userinfo.OAuth2UserRequest;
@@ -59,7 +62,7 @@ public class CustomOAuth2UserService implements OAuth2UserService<OAuth2UserRequ
 
         User user = getUser(extractAttributes, socialType); // getUser() 메소드로 User 객체 생성 후 반환
 
-        log.info("oauth2 로그인된 User DTO : {}", user.toString() );
+        log.info("oauth2 로그인된 User DTO : {}", user.toString());
 
         // DefaultOAuth2User를 구현한 CustomOAuth2User 객체를 생성해서 반환
         return new CustomOAuth2User(
@@ -73,10 +76,10 @@ public class CustomOAuth2UserService implements OAuth2UserService<OAuth2UserRequ
     }
 
     private SocialType getSocialType(String registrationId) {
-        if(NAVER.equals(registrationId)) {
+        if (NAVER.equals(registrationId)) {
             return SocialType.NAVER;
         }
-        if(KAKAO.equals(registrationId)) {
+        if (KAKAO.equals(registrationId)) {
             return SocialType.KAKAO;
         }
         return SocialType.GOOGLE;
@@ -87,23 +90,38 @@ public class CustomOAuth2UserService implements OAuth2UserService<OAuth2UserRequ
      * 만약 찾은 회원이 있다면, 그대로 반환하고 없다면 createUser()를 호출하여 (기본 정보만을 이용해) 회원을 db 에 새로 저장한다.
      */
     private User getUser(OAuthAttributes attributes, SocialType socialType) {
-        log.info("getUser 에서 find 기준 : {} {}",socialType, attributes.getOauth2UserInfo().getId( ));
-        return userRepository.findBySocialTypeAndSocialId(socialType,
-                attributes.getOauth2UserInfo().getId()).orElse(createUser(attributes, socialType));
+        log.info("getUser 에서 find 기준 : {} {}", socialType, attributes.getOauth2UserInfo().getId());
+        return userRepository.findBySocialTypeAndSocialId(socialType, attributes.getOauth2UserInfo().getId())
+                .orElseGet(() -> createOrFindUser(attributes, socialType));
     }
 
+    @Transactional
+    private synchronized User createOrFindUser(OAuthAttributes attributes, SocialType socialType) {
+        try {
+            return userRepository.save(attributes.toEntity(socialType, attributes.getOauth2UserInfo()));
+        } catch (DataIntegrityViolationException e) {
+            log.warn("중복된 사용자 생성 시도, 기존 사용자 반환");
+            // 중복된 데이터가 이미 생성되었을 가능성이 있으므로 다시 조회
+            return userRepository.findBySocialTypeAndSocialId(socialType, attributes.getOauth2UserInfo().getId())
+                    .orElseThrow(() -> new BusinessException(ExceptionType.DUPLICATE_USER_FOUND));
+        }
 //    private Optional<User> getUser(String email) {
 //        return userRepository.findByEmail(email);
 //    }
 
 
+    }
+
     /**
      * OAuthAttributes의 toEntity() 메소드를 통해 빌더로 User 객체 생성 후 반환
      * 생성된 User 객체를 DB에 저장 : socialType, socialId, email, role 값만 있는 상태
      */
-    private User createUser(OAuthAttributes attributes, SocialType socialType) {
-        log.info("최초 로그인이라 새로 db에 저장");
-        User createdUser = attributes.toEntity(socialType, attributes.getOauth2UserInfo());
-        return userRepository.save(createdUser);
-    }
+    // TODO : getUser 에서 ( createOrFindUser 대신 ) 얘 쓰면 왜 중복된 데이터 삽입 시도하는지 알아내기
+//    private User createUser(OAuthAttributes attributes, SocialType socialType) {
+//        log.info("최초 로그인이라 새로 db에 저장");
+//        User createdUser = attributes.toEntity(socialType, attributes.getOauth2UserInfo());
+//        return userRepository.save(createdUser);
+//
+//
+//    }
 }

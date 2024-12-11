@@ -10,9 +10,11 @@ import lombok.*;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Entity
 @Builder
-@Table(name = "USERS")
 @AllArgsConstructor
 @ToString
+@Table(name = "users", uniqueConstraints = {
+        @UniqueConstraint(columnNames = {"socialType", "socialId"})
+})
 public class User {
 
     @Id

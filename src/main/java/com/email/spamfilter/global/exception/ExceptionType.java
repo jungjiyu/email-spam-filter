@@ -30,7 +30,7 @@ public enum ExceptionType {
 
     // user
     USER_NOT_FOUND(NOT_FOUND, "U001", "존재하지 않는 사용자"),
-    DUPLICATED_PROFILE_ID(CONFLICT, "U002", "중복 프로필 아이디"),
+    DUPLICATE_USER_FOUND(CONFLICT, "U002", "중복된 사용자"),
     DUPLICATED_EMAIL(CONFLICT, "U003", "중복 이메일"),
     FORBIDDEN(HttpStatus.FORBIDDEN, "U004", "권한이 없음"),
     UN_AUTHENTICATION(UNAUTHORIZED, "U005", "인증이 필요함"),

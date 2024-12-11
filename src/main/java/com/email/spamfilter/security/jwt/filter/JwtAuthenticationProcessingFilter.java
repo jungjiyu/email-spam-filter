@@ -114,11 +114,13 @@ public class JwtAuthenticationProcessingFilter extends OncePerRequestFilter {
 //            password = PasswordUtil.generateRandomPassword();
 //        }
 
+        log.info("saveAuthentication() 에서 받은 유저 : {} ", user.toString());
+        log.info("user.getEmail(): {} ,  user.getRole().name() : {}", user.getEmail(), user.getRole().name());
 
 
         UserDetails userDetailsUser = org.springframework.security.core.userdetails.User.builder()
-                .username(user.getEmail())
-//                .password(password)
+                .username(user.getEmail()) // email 을 user name 으로 저장
+                .password("") // User.builder() 쓸 때 password 값이 null 이면 에러 발생하게 되있어서 의미없는 값이라도 설정해줘야된다
                 .roles(user.getRole().name())
                 .build();
 

@@ -6,6 +6,7 @@ import com.email.spamfilter.global.base.dto.response.CustomResponseUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.dao.IncorrectResultSizeDataAccessException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -35,6 +36,16 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                 .body(CustomResponseUtil.createFailureResponse(ExceptionType.ACCESSTOKEN_INVALID));
     }
+
+    @ExceptionHandler(IncorrectResultSizeDataAccessException.class)
+    public ResponseEntity<AbstractResponseBody<Void>> IncorrectResultSizeDataAccessException(IncorrectResultSizeDataAccessException ex) {
+        log.error("IncorrectResultSizeDataAccessException  발생 ( socialType과 socialId의 조합 중복) : {}", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(CustomResponseUtil.createFailureResponse(ExceptionType.DUPLICATE_USER_FOUND));
+    }
+
+
+
 
 
 

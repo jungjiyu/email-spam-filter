@@ -100,6 +100,11 @@ public class JwtService {
         setRefreshTokenHeader(response, refreshToken);
         log.info("Access Token, Refresh Token 헤더 설정 완료");
 
+        response.getHeaderNames().forEach(name -> {
+            log.info("Header: {} = {}", name, response.getHeader(name));
+        });
+
+
     }
 
     /**
@@ -238,6 +243,9 @@ public class JwtService {
     }
 
     public Optional<User> authenticateAccessToken(String accessToken) {
+        log.info("authenticateAccessToken 에서 검사당한 이메일 : {}",extractEmail(accessToken).orElse(null));
+        log.info("찾은 유저 : {} ",extractEmail(accessToken)
+                .flatMap(userRepository::findByEmail).orElseThrow(()-> new BusinessException(ExceptionType.USER_NOT_FOUND)).toString());
         return extractEmail(accessToken)
                 .flatMap(userRepository::findByEmail);
     }
