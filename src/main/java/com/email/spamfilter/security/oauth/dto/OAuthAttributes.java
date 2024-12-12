@@ -11,6 +11,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.oauth2.core.oidc.user.DefaultOidcUser;
 
 import java.util.Map;
 import java.util.UUID;
@@ -84,4 +85,19 @@ public class OAuthAttributes {
                 .role(Role.GUEST)
                 .build();
     }
+
+
+    public static User toEntityforOICD(SocialType socialType, DefaultOidcUser oidcUser, String refreshToken) {
+        return User.builder()
+                .socialType(socialType)
+                .socialId(oidcUser.getEmail())
+                .email(oidcUser.getEmail())
+                .nickname(oidcUser.getName())
+                .imageUrl("example image url " + UUID.randomUUID()  )
+                .role(Role.GUEST)
+                .refreshToken(refreshToken)
+                .build();
+    }
+
+
 }

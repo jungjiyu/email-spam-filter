@@ -8,12 +8,17 @@ import com.email.spamfilter.security.oauth.handler.OAuth2LoginSuccessHandler;
 import com.email.spamfilter.security.oauth.service.CustomOAuth2UserService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.config.oauth2.client.CommonOAuth2Provider;
+import org.springframework.security.oauth2.client.registration.ClientRegistration;
+import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
+import org.springframework.security.oauth2.client.registration.InMemoryClientRegistrationRepository;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
@@ -35,6 +40,13 @@ public class SecurityConfig {
     private final OAuth2LoginFailureHandler oAuth2LoginFailureHandler;
     private final CustomOAuth2UserService customOAuth2UserService;
 
+
+    @Value("spring.security.oauth2.client.registration.google.client-id")
+    private String clientId;
+
+    @Value("spring.security.oauth2.client.registration.google.client-secret")
+    private String clientSecret;
+
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
@@ -49,7 +61,7 @@ public class SecurityConfig {
 
                 // 아이콘, css, js 관련
                 // 기본 페이지, css, image, js 하위 폴더에 있는 자료들은 모두 접근 가능, h2-console에 접근 가능
-                .requestMatchers("/","/css/**","/images/**","/js/**","/favicon.ico","/h2-console/**","/oauth2/**").permitAll()
+                .requestMatchers("/","/css/**","/images/**","/js/**","/favicon.ico","/h2-console/**","/oauth2/**","/api/gmail/**").permitAll()
                 .requestMatchers("/sign-up").permitAll() // 회원가입 접근 가능
                 .anyRequest().authenticated()); // 위의 경로 이외에는 모두 인증된 사용자만 접근 가능
 
@@ -130,6 +142,23 @@ public class SecurityConfig {
     public JwtAuthenticationProcessingFilter jwtAuthenticationProcessingFilter() {
         JwtAuthenticationProcessingFilter jwtAuthenticationFilter = new JwtAuthenticationProcessingFilter(jwtService);
         return jwtAuthenticationFilter;
+    }
+
+
+
+    // Spring Boot 자동 구성 기능을 이용할 경우, 내부적으로 Bean이 생성되지만, 지금은 Configuration을 통해 직접 등록
+    @Bean
+    public ClientRegistrationRepository clientRegistrationRepository(){
+        return new InMemoryClientRegistrationRepository(clientRegistration());
+    }
+
+    private ClientRegistration clientRegistration(){
+        return CommonOAuth2Provider
+                .GOOGLE
+                .getBuilder("google")
+                .clientId()
+                .clientSecret()
+                .build();
     }
 
 

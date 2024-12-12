@@ -10,13 +10,22 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.authority.mapping.GrantedAuthoritiesMapper;
 import org.springframework.security.core.authority.mapping.NullAuthoritiesMapper;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken;
+import org.springframework.security.oauth2.core.user.DefaultOAuth2User;
+import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
 
 /**
  * Jwt 인증 필터
@@ -117,7 +126,7 @@ public class JwtAuthenticationProcessingFilter extends OncePerRequestFilter {
         log.info("saveAuthentication() 에서 받은 유저 : {} ", user.toString());
         log.info("user.getEmail(): {} ,  user.getRole().name() : {}", user.getEmail(), user.getRole().name());
 
-
+        // ver1
         UserDetails userDetailsUser = org.springframework.security.core.userdetails.User.builder()
                 .username(user.getEmail()) // email 을 user name 으로 저장
                 .password("") // User.builder() 쓸 때 password 값이 null 이면 에러 발생하게 되있어서 의미없는 값이라도 설정해줘야된다
@@ -134,6 +143,33 @@ public class JwtAuthenticationProcessingFilter extends OncePerRequestFilter {
                 );
 
         log.info("Authentication 객체 생성 완료: {}", authentication);
+
+
+
+        // ver2
+/*
+        // GrantedAuthority 설정
+        Collection<GrantedAuthority> authorities = List.of(new SimpleGrantedAuthority("ROLE_" + user.getRole().name()));
+
+        // OAuth2 인증 토큰 생성
+        OAuth2AuthenticationToken authentication =
+                new OAuth2AuthenticationToken(
+                        new DefaultOAuth2User(
+                                Collections.singleton(new SimpleGrantedAuthority("ROLE_" + user.getRole().name())),
+                                Map.of("email", user.getEmail()), // 사용자 속성
+                                "email" // 사용자 식별 키
+                        ),
+                        Collections.singleton(new SimpleGrantedAuthority("ROLE_" + user.getRole().name())),
+                        registrationId
+                );
+        log.info("Authentication 객체 생성 완료: {}", authentication);
+
+  */
+
+        // OAuth2로 로그인 인증을 수행하면, Principal은 OAuth2User 객체로써 SecurityContext에 인증된 Authentication으로 저장된다..?
+            // 그러니까 principal 은 oAuth2User 로 캐스팅이 가능해진다?
+
+
 
         // SecurityContextHolder에 저장
         SecurityContextHolder.getContext().setAuthentication(authentication);

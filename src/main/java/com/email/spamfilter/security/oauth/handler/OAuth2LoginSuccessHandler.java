@@ -2,8 +2,10 @@ package com.email.spamfilter.security.oauth.handler;
 
 import com.email.spamfilter.global.exception.BusinessException;
 import com.email.spamfilter.global.exception.ExceptionType;
+import com.email.spamfilter.security.oauth.dto.OAuthAttributes;
 import com.email.spamfilter.user.enums.Role;
 import com.email.spamfilter.user.entity.User;
+import com.email.spamfilter.user.enums.SocialType;
 import com.email.spamfilter.user.repository.UserRepository;
 import com.email.spamfilter.security.jwt.service.JwtService;
 import com.email.spamfilter.security.oauth.dto.CustomOAuth2User;
@@ -13,6 +15,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.oauth2.core.oidc.user.DefaultOidcUser;
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -36,7 +39,38 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
     public void onAuthenticationSuccess(HttpServletRequest request, HttpServletResponse response, Authentication authentication) throws IOException, ServletException {
     log.info("OAuth2 Login 성공하여 onAuthenticationSuccess 호줄됨");
     try {
-        CustomOAuth2User oAuth2User = (CustomOAuth2User) authentication.getPrincipal();
+        CustomOAuth2User oAuth2User = null;
+
+        try{
+            oAuth2User = (CustomOAuth2User) authentication.getPrincipal();
+        }catch(ClassCastException e){
+            log.info("oicd user : {}",e.getMessage());
+            DefaultOidcUser oidcUser = (DefaultOidcUser) authentication.getPrincipal();
+            User user = userRepository.findByEmail(oidcUser.getEmail()).orElse(null);
+
+            String accessToken = jwtService.createAccessToken(oidcUser.getEmail());
+            String refreshToken = jwtService.createRefreshToken();
+            log.info("accessToken : {}, refreshToken : {}", accessToken,refreshToken);
+
+            // 회원가입 (db저장)
+            if(user == null ){
+                userRepository.save(OAuthAttributes.toEntityforOICD(SocialType.GOOGLE, oidcUser,refreshToken));
+
+
+                // 회원가입 후에 바로 응답을 보내거나, 리다이렉트를 하지 않고 완료된 메시지 또는 JSON 응답을 클라이언트에 전달할 수 있음
+                response.getWriter().write("회원가입 성공");
+
+            }
+
+            response.addHeader(jwtService.getAccessHeader(), "Bearer " + accessToken);
+            response.addHeader(jwtService.getRefreshHeader(), "Bearer " + refreshToken);
+
+            jwtService.sendAccessAndRefreshToken(response, accessToken, refreshToken);
+            log.info("catch문에서 sendAccessAndRefreshToken 성공");
+
+
+            return;
+        }
 
         // User의 Role이 GUEST일 경우 회원가입 로직 수행
         if(oAuth2User.getRole() == Role.GUEST) {

@@ -23,6 +23,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
 
 import java.io.IOException;
+import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -40,15 +41,27 @@ public class GmailApiService {
         log.info("GmailApiService 의 fetchMessages 진입");
         // 인증된 사용자의 Access Token을 가져옴
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        log.info("SecurityContextHolder Authentication: {}", authentication);
+        if (authentication == null) throw new IllegalStateException("Authentication 객체가 null입니다. 사용자 인증이 필요합니다.");
 
-        OAuth2AuthorizeRequest authorizeRequest = OAuth2AuthorizeRequest.withClientRegistrationId("Google")
+        log.info("Authentication: {}", authentication);
+
+        OAuth2AuthorizeRequest authorizeRequest = OAuth2AuthorizeRequest.withClientRegistrationId("google")
                 .principal(authentication)
                 .build();
+        log.info("authorizeRequest: {}", authorizeRequest);
+        log.info("authorizedClient: {}", authorizeRequest.getAuthorizedClient());
+        log.info("authorizedClient's AccessToken: {}", authorizeRequest.getAuthorizedClient().getAccessToken());
+        log.info("getClientRegistrationId: {}", authorizeRequest.getClientRegistrationId());
+        log.info("getAttributes: {}", authorizeRequest.getAttributes());
 
-        OAuth2AuthorizedClient authorizedClient = authorizedClientManager.authorize(authorizeRequest);
-        log.info("authorizedClient : {} ",authorizedClient);
+        OAuth2AuthorizedClient authorizedClient =null;
 
+        try {
+            authorizedClient= authorizedClientManager.authorize(authorizeRequest);
+        } catch (Exception e) {
+            log.error("exception 발생 : {} ", e.getCause());
+            throw e; // 원인을 확인한 후 필요한 경우 예외를 다시 던집니다.
+        }
         if (authorizedClient == null ) {
             log.info("authorizedClient == null");
             throw new IllegalStateException("Access Token을 가져올 수 없습니다.");
