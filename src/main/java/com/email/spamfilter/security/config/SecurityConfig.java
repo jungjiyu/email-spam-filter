@@ -41,11 +41,6 @@ public class SecurityConfig {
     private final CustomOAuth2UserService customOAuth2UserService;
 
 
-    @Value("spring.security.oauth2.client.registration.google.client-id")
-    private String clientId;
-
-    @Value("spring.security.oauth2.client.registration.google.client-secret")
-    private String clientSecret;
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
@@ -61,7 +56,7 @@ public class SecurityConfig {
 
                 // 아이콘, css, js 관련
                 // 기본 페이지, css, image, js 하위 폴더에 있는 자료들은 모두 접근 가능, h2-console에 접근 가능
-                .requestMatchers("/","/css/**","/images/**","/js/**","/favicon.ico","/h2-console/**","/oauth2/**","/api/gmail/**").permitAll()
+                .requestMatchers("/","/css/**","/images/**","/js/**","/favicon.ico","/h2-console/**","/oauth2/**","/api/gmail/**","/api/google/**").permitAll()
                 .requestMatchers("/sign-up").permitAll() // 회원가입 접근 가능
                 .anyRequest().authenticated()); // 위의 경로 이외에는 모두 인증된 사용자만 접근 가능
 
@@ -145,21 +140,6 @@ public class SecurityConfig {
     }
 
 
-
-    // Spring Boot 자동 구성 기능을 이용할 경우, 내부적으로 Bean이 생성되지만, 지금은 Configuration을 통해 직접 등록
-    @Bean
-    public ClientRegistrationRepository clientRegistrationRepository(){
-        return new InMemoryClientRegistrationRepository(clientRegistration());
-    }
-
-    private ClientRegistration clientRegistration(){
-        return CommonOAuth2Provider
-                .GOOGLE
-                .getBuilder("google")
-                .clientId()
-                .clientSecret()
-                .build();
-    }
 
 
 }

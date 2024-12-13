@@ -52,7 +52,7 @@ public class JwtAuthenticationProcessingFilter extends OncePerRequestFilter {
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
-        if (request.getRequestURI().equals(NO_CHECK_URL) || request.getRequestURI().startsWith("/oauth2")  ) {
+        if (request.getRequestURI().equals(NO_CHECK_URL) || request.getRequestURI().startsWith("/oauth2") || request.getRequestURI().startsWith("/api/google/token")   ) {
             log.info("로그인 관련 요청이므로 필터를 건너뛰고 다음 필터로 진행합니다.");
             filterChain.doFilter(request, response); // "/login" 요청이 들어오면, 다음 필터 호출
             return; // return으로 이후 현재 필터 진행 막기 (안해주면 아래로 내려가서 계속 필터 진행시킴)
@@ -145,29 +145,6 @@ public class JwtAuthenticationProcessingFilter extends OncePerRequestFilter {
         log.info("Authentication 객체 생성 완료: {}", authentication);
 
 
-
-        // ver2
-/*
-        // GrantedAuthority 설정
-        Collection<GrantedAuthority> authorities = List.of(new SimpleGrantedAuthority("ROLE_" + user.getRole().name()));
-
-        // OAuth2 인증 토큰 생성
-        OAuth2AuthenticationToken authentication =
-                new OAuth2AuthenticationToken(
-                        new DefaultOAuth2User(
-                                Collections.singleton(new SimpleGrantedAuthority("ROLE_" + user.getRole().name())),
-                                Map.of("email", user.getEmail()), // 사용자 속성
-                                "email" // 사용자 식별 키
-                        ),
-                        Collections.singleton(new SimpleGrantedAuthority("ROLE_" + user.getRole().name())),
-                        registrationId
-                );
-        log.info("Authentication 객체 생성 완료: {}", authentication);
-
-  */
-
-        // OAuth2로 로그인 인증을 수행하면, Principal은 OAuth2User 객체로써 SecurityContext에 인증된 Authentication으로 저장된다..?
-            // 그러니까 principal 은 oAuth2User 로 캐스팅이 가능해진다?
 
 
 
