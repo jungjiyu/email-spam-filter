@@ -18,6 +18,11 @@ public class GoogleTokenController {
     private final GoogleTokenService googleTokenService;
 
 
+    /**
+     * 실제로 호출할 일은 없음. (GoogpleApi단 에서 활용되는지) 테스트 용으로만 ..
+     * @param authorizationCode
+     * @return
+     */
     @GetMapping("/token")
     public ResponseEntity<String> getAccessToken(@RequestParam("code") String authorizationCode) {
         log.info("Google OAuth2 Callback 호출됨, authorizationCode: {}", authorizationCode);
