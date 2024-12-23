@@ -106,14 +106,14 @@ public class BloomFilterService {
     private boolean isValidSpf(Map<String, Object> message) {
         String spfHeader = extractHeader(message, "Received-SPF");
         String senderIp = extractSenderIpFromSpf(spfHeader);
-        return senderIp != null && trustedIpBloomFilter.mightContain(senderIp);
+        return senderIp != null && trustedIpBloomFilter.lookUp(senderIp);
     }
 
     private boolean isSpamIp(Map<String, Object> message) {
         String receivedHeader = extractHeader(message, "Received");
         String hostIp = extractIpFromReceivedHeader(receivedHeader);
         log.info("검사할 Received 헤더: {}, 추출된 host:{}", receivedHeader, hostIp);
-        return hostIp != null && spamIpBloomFilter.mightContain(hostIp);
+        return hostIp != null && spamIpBloomFilter.lookUp(hostIp);
     }
 
     private boolean containsSpamWords(Map<String, Object> message) {

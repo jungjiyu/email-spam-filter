@@ -47,7 +47,7 @@ public class BloomFilterController {
      * @param authorizationCode OAuth2 인증 코드
      * @return IP 검증 결과가 포함된 이메일 목록
      */
-    @GetMapping("/recieved")
+    @GetMapping("/received")
     public ResponseEntity<List<Map<String, Object>>> filterByRecieved(@RequestParam("code") String authorizationCode) {
         log.info("SpamFilterController: filterByIp 호출됨");
 
@@ -66,7 +66,7 @@ public class BloomFilterController {
      * @param authorizationCode OAuth2 인증 코드
      * @return 스팸 단어 포함 여부가 포함된 이메일 목록
      */
-    @GetMapping("/keywords")
+    @GetMapping("/keyword")
     public ResponseEntity<List<Map<String, Object>>> filterByKeywords(@RequestParam("code") String authorizationCode) {
         log.info("SpamFilterController: filterByKeywords 호출됨");
 

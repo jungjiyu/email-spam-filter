@@ -47,7 +47,7 @@ public class GmailApiController {
      */
     @GetMapping("/messages/{id}")
     public ResponseEntity<String> getMessageById(@RequestParam("code") String authorizationCode,
-                                                   @PathVariable("id") String messageId) {
+                                                 @PathVariable("id") String messageId) {
         log.info("getMessageById API 호출됨: messageId={}", messageId);
 
         try {

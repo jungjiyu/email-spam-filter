@@ -1,7 +1,5 @@
 package com.email.spamfilter.bloomfilter.util;
 
-import lombok.Builder;
-
 import java.util.BitSet;
 import java.util.List;
 import java.util.function.Function;
@@ -38,7 +36,7 @@ public class BloomFilter<T> {
      * @param value 확인할 요소
      * @return 존재 여부
      */
-    public boolean mightContain(T value) {
+    public boolean lookUp(T value) {
         for (Function<T, Integer> hashFunction : hashFunctions) { // hashFunctions 리스트에 포함된 해시 함수들을 순차적으로 실행
             int hash = Math.abs(hashFunction.apply(value)) % size; // 각 해시 함수로 해당 값에 대한 인덱스 계산
             if (!bitSet.get(hash)) {
